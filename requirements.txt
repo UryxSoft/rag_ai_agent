@@ -1,0 +1,73 @@
+# Flask and Core Dependencies
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-SocketIO==5.3.5
+Werkzeug==3.0.1
+gunicorn==21.2.0
+
+# Authentication
+PyJWT==2.8.0
+Werkzeug==3.0.1  # for password hashing
+
+# Celery for Task Queue
+celery==5.3.4
+kombu==5.3.4
+flower==2.0.1
+
+# AI and ML Libraries
+torch==2.1.0
+transformers==4.36.0
+sentence-transformers==2.2.2
+onnxruntime==1.16.0
+llama-cpp-python==0.2.20
+
+# RAGAS for RAG Evaluation
+ragas==0.1.0
+datasets==2.15.0
+
+# Vector Databases and Search
+faiss-cpu==1.7.4
+qdrant-client==1.7.0
+txtai==6.0.0
+opensearch-py==2.4.0
+
+# Document Processing
+PyMuPDF==1.23.8
+python-docx==1.1.0
+python-pptx==0.6.23
+ebooklib==0.18
+Pillow==10.1.0
+pdf2image==1.16.3
+pytesseract==0.3.10
+
+# Caching and Storage
+redis==5.0.1
+minio==7.2.0
+
+# Monitoring
+prometheus-client==0.19.0
+prometheus-flask-exporter==0.23.0
+
+# API Documentation
+flasgger==0.9.7.1
+
+# WebSocket
+python-socketio==5.10.0
+eventlet==0.33.3
+
+# Utilities
+numpy==1.24.3
+pandas==2.1.4
+requests==2.31.0
+python-dotenv==1.0.0
+pydantic==2.5.0
+
+# Development and Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+black==23.12.0
+flake8==6.1.0
+
+# Optional: For production deployments
+# psycopg2-binary==2.9.9  # PostgreSQL support
+# gevent==23.9.1  # For async workers

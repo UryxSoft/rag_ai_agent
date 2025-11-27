@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Flask API Application
+  api:
+    build: .
+    container_name: intelligent_analysis_api
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - REDIS_HOST=redis
+      - OPENSEARCH_HOST=opensearch
+      - QDRANT_HOST=qdrant
+      - MINIO_ENDPOINT=minio:9000
+      - API_KEY=${API_KEY:-SECURE_AND_COMPLEX_API_KEY_100M_MVP}
+    volumes:
+      - ./models:/app/models
+      - upload_data:/mnt/user-data/uploads
+      - output_data:/mnt/user-data/outputs
+    depends_on:
+      - redis
+      - opensearch
+      - qdrant
+      - minio
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: intelligent_analysis_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  # OpenSearch
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: intelligent_analysis_opensearch
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:v1.7.0
+    container_name: intelligent_analysis_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: intelligent_analysis_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  opensearch_data:
+  qdrant_data:
+  minio_data:
+  upload_data:
+  output_data:
+
+networks:
+  app_network:
+    driver: bridge
