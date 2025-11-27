@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Analysis System - Dashboard</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .assistant-message {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-brain text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Intelligent Analysis System</h1>
+                        <p class="text-sm opacity-90">AI-Powered Document & Image Analysis</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="userInfo" class="hidden">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="username"></span>
+                    </span>
+                    <button id="logoutBtn" class="hidden bg-white text-purple-600 px-4 py-2 rounded-lg hover:bg-gray-100">
+                        Logout
+                    </button>
+                    <button id="loginBtn" class="bg-white text-purple-600 px-4 py-2 rounded-lg hover:bg-gray-100">
+                        Login
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- Login Modal -->
+        <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 max-w-md w-full fade-in">
+                <h2 class="text-2xl font-bold mb-6">Login</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Username</label>
+                        <input type="text" id="loginUsername" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="admin or demo">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Password</label>
+                        <input type="password" id="loginPassword" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="admin123 or demo123">
+                    </div>
+                    <div class="flex space-x-4">
+                        <button id="loginSubmit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">
+                            Login
+                        </button>
+                        <button id="loginCancel" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Upload Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-upload text-purple-600 mr-2"></i>
+                        Upload Document
+                    </h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 cursor-pointer" id="dropZone">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-600">Drop file here or click to browse</p>
+                        <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.pptx,.txt">
+                    </div>
+                    <div id="fileInfo" class="hidden text-sm text-gray-600"></div>
+                </div>
+            </div>
+
+            <!-- Analysis Options -->
+            <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-cogs text-purple-600 mr-2"></i>
+                    Analysis Options
+                </h3>
+                <div class="space-y-3">
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="analysis-option w-5 h-5 text-purple-600" value="similarity" checked>
+                        <span>Similarity Detection</span>
+                    </label>
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="analysis-option w-5 h-5 text-purple-600" value="ai_detect" checked>
+                        <span>AI Content Detection</span>
+                    </label>
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" class="analysis-option w-5 h-5 text-purple-600" value="rag_retrieval">
+                        <span>RAG Context Retrieval</span>
+                    </label>
+                </div>
+                <button id="startAnalysisBtn" class="w-full mt-6 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:bg-gray-300" disabled>
+                    <i class="fas fa-play mr-2"></i>
+                    Start Analysis
+                </button>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-chart-line text-purple-600 mr-2"></i>
+                    System Status
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Connection</span>
+                        <span id="connectionStatus" class="flex items-center">
+                            <i class="fas fa-circle text-gray-400 mr-2"></i>
+                            Disconnected
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Active Tasks</span>
+                        <span id="activeTasks" class="font-bold">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Completed</span>
+                        <span id="completedTasks" class="font-bold">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Progress -->
+        <div id="analysisProgress" class="hidden bg-white rounded-lg shadow-lg p-6 mb-8 fade-in">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-tasks text-purple-600 mr-2"></i>
+                Analysis Progress
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span id="progressText">Initializing...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div id="progressBar" class="progress-bar bg-purple-600 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="progressSteps" class="grid grid-cols-4 gap-2 text-center text-sm">
+                    <div class="step" data-step="extraction">
+                        <i class="fas fa-file-alt text-2xl mb-1"></i>
+                        <p>Extraction</p>
+                    </div>
+                    <div class="step" data-step="analysis">
+                        <i class="fas fa-brain text-2xl mb-1"></i>
+                        <p>Analysis</p>
+                    </div>
+                    <div class="step" data-step="evaluation">
+                        <i class="fas fa-check-circle text-2xl mb-1"></i>
+                        <p>Evaluation</p>
+                    </div>
+                    <div class="step" data-step="complete">
+                        <i class="fas fa-flag-checkered text-2xl mb-1"></i>
+                        <p>Complete</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results and Chat -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Results -->
+            <div id="resultsSection" class="hidden bg-white rounded-lg shadow-lg p-6 fade-in">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-file-alt text-purple-600 mr-2"></i>
+                    Analysis Results
+                </h3>
+                <div id="resultsContent" class="space-y-4">
+                    <!-- Results will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div id="chatSection" class="hidden bg-white rounded-lg shadow-lg p-6 flex flex-col h-[600px] fade-in">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-comments text-purple-600 mr-2"></i>
+                    Post-Analysis Chat
+                </h3>
+                <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-4 bg-gray-50 rounded">
+                    <!-- Chat messages will appear here -->
+                </div>
+                <div class="flex space-x-2">
+                    <input type="text" id="chatInput" placeholder="Ask a question about the document..." 
+                           class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <button id="sendChatBtn" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Global state
+        const state = {
+            socket: null,
+            currentTaskId: null,
+            currentMemoryId: null,
+            uploadedFile: null,
+            accessToken: localStorage.getItem('access_token'),
+            username: localStorage.getItem('username')
+        };
+
+        // API Base URL
+        const API_BASE = window.location.origin;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            setupEventListeners();
+            if (state.accessToken) {
+                showAuthenticatedUI();
+                connectWebSocket();
+            }
+        });
+
+        function initializeApp() {
+            console.log('Initializing Intelligent Analysis System...');
+        }
+
+        function setupEventListeners() {
+            // Login
+            document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+            document.getElementById('loginSubmit').addEventListener('click', handleLogin);
+            document.getElementById('loginCancel').addEventListener('click', hideLoginModal);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+            // File upload
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-purple-500');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-purple-500');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-purple-500');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+
+            // Analysis
+            document.getElementById('startAnalysisBtn').addEventListener('click', startAnalysis);
+
+            // Chat
+            document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
+            document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendChatMessage();
+            });
+        }
+
+        // Authentication
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('flex');
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('flex');
+        }
+
+        async function handleLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    state.accessToken = data.access_token;
+                    state.username = username;
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('username', username);
+                    hideLoginModal();
+                    showAuthenticatedUI();
+                    connectWebSocket();
+                    showNotification('Login successful!', 'success');
+                } else {
+                    showNotification('Login failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Login error: ' + error.message, 'error');
+            }
+        }
+
+        function handleLogout() {
+            state.accessToken = null;
+            state.username = null;
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('username');
+            showUnauthenticatedUI();
+            if (state.socket) state.socket.disconnect();
+            showNotification('Logged out successfully', 'success');
+        }
+
+        function showAuthenticatedUI() {
+            document.getElementById('loginBtn').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('userInfo').classList.remove('hidden');
+            document.getElementById('username').textContent = state.username;
+        }
+
+        function showUnauthenticatedUI() {
+            document.getElementById('loginBtn').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+        }
+
+        // WebSocket Connection
+        function connectWebSocket() {
+            state.socket = io(API_BASE);
+            
+            state.socket.on('connect', () => {
+                console.log('WebSocket connected');
+                updateConnectionStatus(true);
+            });
+            
+            state.socket.on('disconnect', () => {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus(false);
+            });
+            
+            state.socket.on('task_update', (data) => {
+                handleTaskUpdate(data);
+            });
+            
+            state.socket.on('analysis_progress', (data) => {
+                updateProgress(data.progress, data.message);
+            });
+            
+            state.socket.on('chat_message', (data) => {
+                if (data.role === 'assistant') {
+                    addChatMessage(data.message, 'assistant');
+                }
+            });
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.innerHTML = '<i class="fas fa-circle text-green-500 mr-2"></i>Connected';
+            } else {
+                statusEl.innerHTML = '<i class="fas fa-circle text-red-500 mr-2"></i>Disconnected';
+            }
+        }
+
+        // File Handling
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        }
+
+        function handleFile(file) {
+            state.uploadedFile = file;
+            document.getElementById('fileInfo').textContent = `Selected: ${file.name} (${formatBytes(file.size)})`;
+            document.getElementById('fileInfo').classList.remove('hidden');
+            document.getElementById('startAnalysisBtn').disabled = false;
+        }
+
+        // Analysis
+        async function startAnalysis() {
+            if (!state.uploadedFile) return;
+            
+            const analysisTypes = Array.from(document.querySelectorAll('.analysis-option:checked'))
+                .map(cb => cb.value);
+            
+            if (analysisTypes.length === 0) {
+                showNotification('Please select at least one analysis type', 'error');
+                return;
+            }
+
+            // Upload file first
+            const formData = new FormData();
+            formData.append('file', state.uploadedFile);
+
+            try {
+                showProgress(true);
+                updateProgress(10, 'Uploading document...');
+
+                const uploadResponse = await fetch(`${API_BASE}/api/analysis/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    },
+                    body: formData
+                });
+
+                const uploadData = await uploadResponse.json();
+                
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadData.error || 'Upload failed');
+                }
+
+                updateProgress(30, 'Starting analysis...');
+
+                // Start analysis
+                const analysisResponse = await fetch(`${API_BASE}/api/analysis/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filepath: uploadData.data.filepath,
+                        analysis_types: analysisTypes
+                    })
+                });
+
+                const analysisData = await analysisResponse.json();
+                
+                if (analysisResponse.ok) {
+                    state.currentTaskId = analysisData.task_id;
+                    state.socket.emit('join_task', { task_id: state.currentTaskId });
+                    monitorTask(state.currentTaskId);
+                } else {
+                    throw new Error(analysisData.error || 'Analysis failed to start');
+                }
+
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+                showProgress(false);
+            }
+        }
+
+        async function monitorTask(taskId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${state.accessToken}`
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.state === 'SUCCESS') {
+                        clearInterval(interval);
+                        handleAnalysisComplete(data.result);
+                    } else if (data.state === 'FAILURE') {
+                        clearInterval(interval);
+                        showNotification('Analysis failed', 'error');
+                        showProgress(false);
+                    } else {
+                        updateProgress(data.progress || 0, data.status || 'Processing...');
+                    }
+                } catch (error) {
+                    console.error('Error monitoring task:', error);
+                }
+            }, 2000);
+        }
+
+        function handleTaskUpdate(data) {
+            console.log('Task update:', data);
+        }
+
+        function handleAnalysisComplete(result) {
+            updateProgress(100, 'Analysis complete!');
+            setTimeout(() => showProgress(false), 1000);
+            
+            state.currentMemoryId = result.memory_id;
+            displayResults(result);
+            showChatInterface();
+            
+            document.getElementById('completedTasks').textContent = 
+                parseInt(document.getElementById('completedTasks').textContent) + 1;
+            
+            showNotification('Analysis completed successfully!', 'success');
+        }
+
+        function displayResults(result) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            resultsContent.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <h4 class="font-bold mb-2">Document Structure</h4>
+                        <p class="text-sm text-gray-600">Pages: ${result.document_structure?.length || 0}</p>
+                    </div>
+                    <div class="p-4 bg-green-50 rounded-lg">
+                        <h4 class="font-bold mb-2">Similarity Results</h4>
+                        <p class="text-sm text-gray-600">Matches found: ${result.text_similarity_results?.length || 0}</p>
+                    </div>
+                    <div class="p-4 bg-yellow-50 rounded-lg">
+                        <h4 class="font-bold mb-2">AI Detection</h4>
+                        <p class="text-sm text-gray-600">${result.ai_text_detection?.length || 0} sections analyzed</p>
+                    </div>
+                    <div class="p-4 bg-purple-50 rounded-lg">
+                        <h4 class="font-bold mb-2">Insights</h4>
+                        <p class="text-sm">${result.insights || 'No insights available'}</p>
+                    </div>
+                </div>
+            `;
+            
+            resultsSection.classList.remove('hidden');
+        }
+
+        // Chat
+        function showChatInterface() {
+            const chatSection = document.getElementById('chatSection');
+            chatSection.classList.remove('hidden');
+            addChatMessage('Analysis complete! Ask me anything about the document.', 'assistant');
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || !state.currentMemoryId) return;
+            
+            addChatMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/chat/message`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        memory_id: state.currentMemoryId,
+                        question: message
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addChatMessage(data.data.answer, 'assistant');
+                } else {
+                    addChatMessage('Sorry, I encountered an error processing your question.', 'assistant');
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                addChatMessage('Sorry, I encountered an error.', 'assistant');
+            }
+        }
+
+        function addChatMessage(text, role) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-bubble p-3 rounded-lg ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Progress UI
+        function showProgress(show) {
+            const progressSection = document.getElementById('analysisProgress');
+            if (show) {
+                progressSection.classList.remove('hidden');
+            } else {
+                progressSection.classList.add('hidden');
+            }
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+            document.getElementById('progressText').textContent = message;
+        }
+
+        // Utilities
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function showNotification(message, type = 'info') {
+            // Simple notification (could be enhanced with a library)
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            alert(message);
+        }
+    </script>
+</body>
+</html>

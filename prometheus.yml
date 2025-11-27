@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'intelligent-analysis-system'
+
+scrape_configs:
+  # Flask API metrics
+  - job_name: 'flask_api'
+    static_configs:
+      - targets: ['api:5000']
+    metrics_path: '/metrics'
+
+  # Celery metrics (via Flower)
+  - job_name: 'celery'
+    static_configs:
+      - targets: ['flower:5555']
+    metrics_path: '/metrics'
+
+  # Redis metrics (if redis_exporter is added)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis_exporter:9121']
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
